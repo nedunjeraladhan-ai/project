@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ config.CHATBOT_TITLE }}</title>
+<style>
+:root{
+  --primary: {{ config.PRIMARY_COLOR }};
+  --dark: {{ config.DARK_COLOR }};
+  --soft: {{ config.SOFT_COLOR }};
+  --text: #111827;
+  --muted: #64748b;
+  --white: #fff;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;
+  color:var(--text); background:linear-gradient(135deg,var(--soft),#fff 55%,#f8fafc);
+}
+.app{max-width:1100px;margin:auto;min-height:100vh;display:flex;flex-direction:column;padding:18px}
+.header{
+  background:var(--dark); color:white; border-radius:24px; padding:20px 22px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  box-shadow:0 16px 40px rgba(15,23,42,.18)
+}
+.brand{display:flex;align-items:center;gap:14px}.logo{width:52px;height:52px;border-radius:16px;background:var(--primary);
+display:grid;place-items:center;font-size:25px;font-weight:800}.title{font-size:clamp(20px,4vw,30px);font-weight:800}.domain{opacity:.8;font-size:13px;margin-top:3px}
+.clear{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;border-radius:12px;padding:10px 13px;cursor:pointer}
+.chat{flex:1;margin:16px 0;display:flex;flex-direction:column;gap:12px;overflow:auto;padding:4px}
+.msg{max-width:82%;padding:13px 15px;border-radius:18px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 5px 18px rgba(15,23,42,.06)}
+.bot{align-self:flex-start;background:#fff;border:1px solid #e5e7eb;border-bottom-left-radius:6px}
+.user{align-self:flex-end;background:var(--primary);color:white;border-bottom-right-radius:6px}
+.composer{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:10px;display:flex;gap:9px;box-shadow:0 12px 30px rgba(15,23,42,.08)}
+textarea{flex:1;border:0;outline:0;resize:none;font:inherit;padding:12px;min-height:48px;max-height:150px}
+.send{border:0;background:var(--primary);color:white;border-radius:14px;padding:0 20px;font-weight:800;cursor:pointer}.send:disabled{opacity:.5}
+.note{text-align:center;color:var(--muted);font-size:11px;padding:8px}
+@media(max-width:640px){
+ .app{padding:10px}.header{border-radius:18px;padding:15px}.logo{width:44px;height:44px}
+ .clear{font-size:12px;padding:8px}.msg{max-width:92%}.composer{border-radius:16px}.send{padding:0 15px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="header">
+  <div class="brand"><div class="logo">AI</div><div><div class="title">{{ config.CHATBOT_TITLE }}</div><div class="domain">{{ config.DOMAIN }}</div></div></div>
+  <button class="clear" onclick="clearChat()">Clear</button>
+</header>
+<main id="chat" class="chat">
+  <div class="msg bot">{{ config.WELCOME_MESSAGE }}</div>
+</main>
+<form class="composer" onsubmit="sendMessage(event)">
+  <textarea id="message" placeholder="Ask a {{ config.DOMAIN }} question..." rows="1"></textarea>
+  <button class="send" id="send" type="submit">Send</button>
+</form>
+<div class="note">Temporary session chat • Your conversation is isolated to this browser session.</div>
+</div>
+<script>
+const box=document.getElementById('chat'), input=document.getElementById('message'), send=document.getElementById('send');
+function add(text,who){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;box.appendChild(d);box.scrollTop=box.scrollHeight;}
+async function sendMessage(e){
+ e.preventDefault(); const text=input.value.trim(); if(!text)return;
+ add(text,'user'); input.value=''; send.disabled=true;
+ add('Thinking...','bot'); const loading=box.lastChild;
+ try{
+   const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
+   const data=await r.json(); loading.remove(); add(data.answer||data.error||'Something went wrong.','bot');
+ }catch(err){loading.remove();add('Connection error. Please try again.','bot')}
+ finally{send.disabled=false;input.focus();}
+}
+async function clearChat(){await fetch('/api/clear',{method:'POST'});box.innerHTML='';add({{ config.WELCOME_MESSAGE|tojson }},'bot');}
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage(e)}})
+</script>
+</body>
+</html>
